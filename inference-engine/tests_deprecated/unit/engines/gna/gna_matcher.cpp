@@ -60,10 +60,10 @@ public:
     void * alloc(size_t size) noexcept override {
         return ptr;
     }
-    virtual bool   free(void* handle) noexcept {
+    bool   free(void* handle) noexcept override {
         return true;
     }
-    virtual void Release() noexcept {
+    void Release() noexcept override {
         delete this;
     }
 };
@@ -224,7 +224,8 @@ void GNAPropagateMatcher :: match() {
                 ASSERT_NO_THROW_IE_EXCEPTION(network = CNNNetwork(_env.ngraph_model));
                 ASSERT_NO_FATAL_FAILURE(loadCNNNetwork(network));
 #ifdef GNA_DEBUG
-                network.serialize("CNNNetworkFromNgraphModel.xml", "CNNNetworkFromNgraphModel.bin");
+                // TODO: crash on activation tests so far on addOutput call
+                // network.serialize("CNNNetworkFromNgraphModel.xml", "CNNNetworkFromNgraphModel.bin");
 #endif
             }
             else if (!_env.importedModelFileName.empty()) {

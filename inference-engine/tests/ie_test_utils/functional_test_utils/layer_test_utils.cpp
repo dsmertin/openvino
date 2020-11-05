@@ -2,10 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-#include <transformations/convert_batch_to_space.hpp>
-#include <transformations/convert_space_to_batch.hpp>
+#include <transformations/op_conversions/convert_batch_to_space.hpp>
+#include <transformations/op_conversions/convert_space_to_batch.hpp>
 
 #include "layer_test_utils.hpp"
+#include "plugin_config.hpp"
 
 namespace LayerTestsUtils {
 
@@ -16,16 +17,9 @@ LayerTestsCommon::LayerTestsCommon() : threshold(1e-2f) {
 void LayerTestsCommon::Run() {
     SKIP_IF_CURRENT_TEST_IS_DISABLED()
 
-    ConfigurePlugin();
     LoadNetwork();
     Infer();
     Validate();
-}
-
-LayerTestsCommon::~LayerTestsCommon() {
-    if (!configuration.empty()) {
-        PluginCache::get().reset();
-    }
 }
 
 InferenceEngine::Blob::Ptr LayerTestsCommon::GenerateInput(const InferenceEngine::InputInfo &info) const {
@@ -42,22 +36,32 @@ void LayerTestsCommon::Compare(const std::vector<std::uint8_t> &expected, const 
     const auto actualBuffer = lockedMemory.as<const std::uint8_t *>();
 
     const auto &precision = actual->getTensorDesc().getPrecision();
-    auto bufferSize = actual->size();
-    // With dynamic batch, you need to size
-    if (configuration.count(InferenceEngine::PluginConfigParams::KEY_DYN_BATCH_ENABLED)) {
-        auto batchSize = actual->getTensorDesc().getDims()[0];
-        auto halfBatchSize = batchSize > 1 ? batchSize/ 2 : 1;
-        bufferSize = (actual->size() * halfBatchSize / batchSize);
-    }
-    const auto &size = bufferSize;
+    const auto &size = actual->size();
     switch (precision) {
         case InferenceEngine::Precision::FP32:
-            Compare(reinterpret_cast<const float *>(expectedBuffer), reinterpret_cast<const float *>(actualBuffer),
-                    size, threshold);
+            Compare<float>(reinterpret_cast<const float *>(expectedBuffer), reinterpret_cast<const float *>(actualBuffer), size, threshold);
             break;
         case InferenceEngine::Precision::I32:
-            Compare(reinterpret_cast<const std::int32_t *>(expectedBuffer),
-                    reinterpret_cast<const std::int32_t *>(actualBuffer), size, 0);
+            Compare<int32_t>(reinterpret_cast<const int32_t *>(expectedBuffer), reinterpret_cast<const int32_t *>(actualBuffer), size, 0);
+            break;
+        case InferenceEngine::Precision::I64:
+            Compare<int64_t>(reinterpret_cast<const int64_t *>(expectedBuffer), reinterpret_cast<const int64_t *>(actualBuffer), size, 0);
+            break;
+        case InferenceEngine::Precision::I8:
+            Compare<int8_t>(reinterpret_cast<const int8_t *>(expectedBuffer), reinterpret_cast<const int8_t *>(actualBuffer), size, 0);
+            break;
+        case InferenceEngine::Precision::U16:
+            Compare<uint16_t>(reinterpret_cast<const uint16_t *>(expectedBuffer), reinterpret_cast<const uint16_t *>(actualBuffer), size, 0);
+            break;
+        case InferenceEngine::Precision::I16:
+            Compare<int16_t>(reinterpret_cast<const int16_t *>(expectedBuffer), reinterpret_cast<const int16_t *>(actualBuffer), size, 0);
+            break;
+        case InferenceEngine::Precision::BOOL:
+        case InferenceEngine::Precision::U8:
+            Compare<uint8_t>(reinterpret_cast<const uint8_t *>(expectedBuffer), reinterpret_cast<const uint8_t *>(actualBuffer), size, 0);
+            break;
+        case InferenceEngine::Precision::U64:
+            Compare<uint64_t>(reinterpret_cast<const uint64_t *>(expectedBuffer), reinterpret_cast<const uint64_t *>(actualBuffer), size, 0);
             break;
         default:
             FAIL() << "Comparator for " << precision << " precision isn't supported";
@@ -90,12 +94,6 @@ void LayerTestsCommon::Compare(const InferenceEngine::Blob::Ptr &expected, const
     }
 }
 
-void LayerTestsCommon::ConfigurePlugin() {
-    if (!configuration.empty()) {
-        core->SetConfig(configuration, targetDevice);
-    }
-}
-
 void LayerTestsCommon::ConfigureNetwork() const {
     for (const auto &in : cnnNetwork.getInputsInfo()) {
         if (inLayout != InferenceEngine::Layout::ANY) {
@@ -118,8 +116,9 @@ void LayerTestsCommon::ConfigureNetwork() const {
 
 void LayerTestsCommon::LoadNetwork() {
     cnnNetwork = InferenceEngine::CNNNetwork{function};
+    PreparePluginConfiguration(this);
     ConfigureNetwork();
-    executableNetwork = core->LoadNetwork(cnnNetwork, targetDevice);
+    executableNetwork = core->LoadNetwork(cnnNetwork, targetDevice, configuration);
 }
 
 void LayerTestsCommon::Infer() {
@@ -161,12 +160,14 @@ std::vector<std::vector<std::uint8_t>> LayerTestsCommon::CalculateRefs() {
     }
 
     auto ieOutPrc = outPrc;
-    if (outPrc == InferenceEngine::Precision::UNSPECIFIED) {
-        const auto &actualOutputs = GetOutputs();
-        ieOutPrc = actualOutputs[0]->getTensorDesc().getPrecision();
+    const auto &actualOutputs = GetOutputs();
+    std::vector<ngraph::element::Type_t> convertType(actualOutputs.size(), FuncTestUtils::PrecisionUtils::convertIE2nGraphPrc(ieOutPrc));
+    if (ieOutPrc == InferenceEngine::Precision::UNSPECIFIED) {
+        for (size_t i = 0; i < convertType.size(); i++) {
+            convertType[i] = FuncTestUtils::PrecisionUtils::convertIE2nGraphPrc(actualOutputs[i]->getTensorDesc().getPrecision());
+        }
     }
 
-    const auto &convertType = FuncTestUtils::PrecisionUtils::convertIE2nGraphPrc(ieOutPrc);
     std::vector<std::vector<std::uint8_t>> expectedOutputs;
     switch (refMode) {
         case INTERPRETER: {
@@ -231,5 +232,13 @@ void LayerTestsCommon::Validate() {
 
 void LayerTestsCommon::SetRefMode(RefMode mode) {
     refMode = mode;
+}
+
+std::shared_ptr<ngraph::Function> LayerTestsCommon::GetFunction() {
+    return function;
+}
+
+std::map<std::string, std::string>& LayerTestsCommon::GetConfiguration() {
+    return configuration;
 }
 }  // namespace LayerTestsUtils
