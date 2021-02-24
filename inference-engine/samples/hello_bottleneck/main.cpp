@@ -12,7 +12,7 @@
 using namespace InferenceEngine;
 
 int main(int argc, char *argv[]) {
-  if (argc != 4) {
+  if (argc < 4) {
     std::cout << "Usage : ./hello_bottleneck <model_path> <device> <nireq>"
               << std::endl;
     return EXIT_FAILURE;
@@ -63,16 +63,16 @@ int main(int argc, char *argv[]) {
   long long previousInference = 1LL - num_of_requests;
 
   using namespace std::chrono;
-  size_t minutes_count = 2;
-  minutes working_time{minutes_count};
+  size_t seconds_count = (argc == 5) ? std::stoi(argv[4]) : 120;
+  seconds working_time{seconds_count};
+  std::cout << "Exec-time = " << seconds_count << " sec." << std::endl;
 
   size_t processed_frames_count = 0;
 
   std::cout << "Starting..." << std::endl;
-  std::cout << "Exec-time = " << minutes_count << " min." << std::endl;
 
   auto start = high_resolution_clock::now();
-  while (duration_cast<minutes>(high_resolution_clock::now() - start) <
+  while (duration_cast<seconds>(high_resolution_clock::now() - start) <
          working_time) {
     // start new inference
     inferRequests[currentInference]->startAsync();
