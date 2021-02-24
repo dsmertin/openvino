@@ -43,7 +43,7 @@ int main(int argc, char *argv[]) {
   DataPtr output_info = network.getOutputsInfo().begin()->second;
   std::string output_name = network.getOutputsInfo().begin()->first;
 
-  output_info->setPrecision(Precision::FP32);
+  output_info->setPrecision(Precision::FP16);
 
   /* load network */
   std::map<std::string, std::string> networkConfig;

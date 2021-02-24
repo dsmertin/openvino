@@ -15,6 +15,52 @@
 using Time = std::chrono::high_resolution_clock;
 using ns = std::chrono::nanoseconds;
 
+std::string getErrorMsg(InferenceEngine::StatusCode code) {
+    switch (code) {
+
+    case InferenceEngine::StatusCode::OK:
+        return std::string("OK");
+
+    case InferenceEngine::StatusCode::GENERAL_ERROR:
+        return std::string("GENERAL_ERROR");
+
+    case InferenceEngine::StatusCode::NOT_IMPLEMENTED:
+        return std::string("NOT_IMPLEMENTED");
+
+    case InferenceEngine::StatusCode::NETWORK_NOT_LOADED:
+        return std::string("NETWORK_NOT_LOADED");
+
+    case InferenceEngine::StatusCode::PARAMETER_MISMATCH:
+        return std::string("PARAMETER_MISMATCH");
+
+    case InferenceEngine::StatusCode::NOT_FOUND:
+        return std::string("NOT_FOUND");
+
+    case InferenceEngine::StatusCode::OUT_OF_BOUNDS:
+        return std::string("OUT_OF_BOUNDS");
+
+    case InferenceEngine::StatusCode::UNEXPECTED:
+        return std::string("UNEXPECTED");
+
+    case InferenceEngine::StatusCode::REQUEST_BUSY:
+        return std::string("REQUEST_BUSY");
+
+    case InferenceEngine::StatusCode::RESULT_NOT_READY:
+        return std::string("RESULT_NOT_READY");
+
+    case InferenceEngine::StatusCode::NOT_ALLOCATED:
+        return std::string("NOT_ALLOCATED");
+
+    case InferenceEngine::StatusCode::INFER_NOT_STARTED:
+        return std::string("INFER_NOT_STARTED");
+
+    case InferenceEngine::StatusCode::NETWORK_NOT_READ:
+        return std::string("NETWORK_NOT_READ");
+    }
+
+    return std::string("UNKNOWN_IE_STATUS_CODE");
+}
+
 class InferReqWrap {
 public:
   using Ptr = std::shared_ptr<InferReqWrap>;
@@ -41,8 +87,8 @@ public:
     InferenceEngine::StatusCode code =
         _request.Wait(InferenceEngine::IInferRequest::WaitMode::RESULT_READY);
 
-    if (code != InferenceEngine::StatusCode::OK) {
-      throw std::logic_error("Wait");
+    if (code != InferenceEngine::StatusCode::OK && code != InferenceEngine::StatusCode::INFER_NOT_STARTED) {
+      throw std::logic_error("Wait: " + getErrorMsg(code));
     }
   }
 
