@@ -16,49 +16,49 @@ using Time = std::chrono::high_resolution_clock;
 using ns = std::chrono::nanoseconds;
 
 std::string getErrorMsg(InferenceEngine::StatusCode code) {
-    switch (code) {
+  switch (code) {
 
-    case InferenceEngine::StatusCode::OK:
-        return std::string("OK");
+  case InferenceEngine::StatusCode::OK:
+    return std::string("OK");
 
-    case InferenceEngine::StatusCode::GENERAL_ERROR:
-        return std::string("GENERAL_ERROR");
+  case InferenceEngine::StatusCode::GENERAL_ERROR:
+    return std::string("GENERAL_ERROR");
 
-    case InferenceEngine::StatusCode::NOT_IMPLEMENTED:
-        return std::string("NOT_IMPLEMENTED");
+  case InferenceEngine::StatusCode::NOT_IMPLEMENTED:
+    return std::string("NOT_IMPLEMENTED");
 
-    case InferenceEngine::StatusCode::NETWORK_NOT_LOADED:
-        return std::string("NETWORK_NOT_LOADED");
+  case InferenceEngine::StatusCode::NETWORK_NOT_LOADED:
+    return std::string("NETWORK_NOT_LOADED");
 
-    case InferenceEngine::StatusCode::PARAMETER_MISMATCH:
-        return std::string("PARAMETER_MISMATCH");
+  case InferenceEngine::StatusCode::PARAMETER_MISMATCH:
+    return std::string("PARAMETER_MISMATCH");
 
-    case InferenceEngine::StatusCode::NOT_FOUND:
-        return std::string("NOT_FOUND");
+  case InferenceEngine::StatusCode::NOT_FOUND:
+    return std::string("NOT_FOUND");
 
-    case InferenceEngine::StatusCode::OUT_OF_BOUNDS:
-        return std::string("OUT_OF_BOUNDS");
+  case InferenceEngine::StatusCode::OUT_OF_BOUNDS:
+    return std::string("OUT_OF_BOUNDS");
 
-    case InferenceEngine::StatusCode::UNEXPECTED:
-        return std::string("UNEXPECTED");
+  case InferenceEngine::StatusCode::UNEXPECTED:
+    return std::string("UNEXPECTED");
 
-    case InferenceEngine::StatusCode::REQUEST_BUSY:
-        return std::string("REQUEST_BUSY");
+  case InferenceEngine::StatusCode::REQUEST_BUSY:
+    return std::string("REQUEST_BUSY");
 
-    case InferenceEngine::StatusCode::RESULT_NOT_READY:
-        return std::string("RESULT_NOT_READY");
+  case InferenceEngine::StatusCode::RESULT_NOT_READY:
+    return std::string("RESULT_NOT_READY");
 
-    case InferenceEngine::StatusCode::NOT_ALLOCATED:
-        return std::string("NOT_ALLOCATED");
+  case InferenceEngine::StatusCode::NOT_ALLOCATED:
+    return std::string("NOT_ALLOCATED");
 
-    case InferenceEngine::StatusCode::INFER_NOT_STARTED:
-        return std::string("INFER_NOT_STARTED");
+  case InferenceEngine::StatusCode::INFER_NOT_STARTED:
+    return std::string("INFER_NOT_STARTED");
 
-    case InferenceEngine::StatusCode::NETWORK_NOT_READ:
-        return std::string("NETWORK_NOT_READ");
-    }
+  case InferenceEngine::StatusCode::NETWORK_NOT_READ:
+    return std::string("NETWORK_NOT_READ");
+  }
 
-    return std::string("UNKNOWN_IE_STATUS_CODE");
+  return std::string("UNKNOWN_IE_STATUS_CODE");
 }
 
 class InferReqWrap {
@@ -87,8 +87,9 @@ public:
     InferenceEngine::StatusCode code =
         _request.Wait(InferenceEngine::IInferRequest::WaitMode::RESULT_READY);
 
-    if (code != InferenceEngine::StatusCode::OK && code != InferenceEngine::StatusCode::INFER_NOT_STARTED) {
-      throw std::logic_error("Wait: " + getErrorMsg(code));
+    if (code != InferenceEngine::StatusCode::OK &&
+        code != InferenceEngine::StatusCode::INFER_NOT_STARTED) {
+      throw std::logic_error("Wait");
     }
   }
 
@@ -123,16 +124,6 @@ public:
     InferenceEngine::Blob::Ptr image_blob =
         InferenceEngine::make_shared_blob<uint8_t>(tDesc, frame.data);
 
-    std::random_device rd;
-    std::mt19937 rand_generator(rd());
-    std::uniform_real_distribution<> dis(0.05, 0.5);
-
-    double ratio_h = dis(rand_generator);
-    double ratio_w = dis(rand_generator);
-    InferenceEngine::ROI crop_roi(
-        {0, (size_t)(width * ratio_w), (size_t)(height * ratio_h),
-         (size_t)(width * (1 - ratio_w)), (size_t)(height * (1 - ratio_h))});
-    image_blob = make_shared_blob(image_blob, crop_roi);
     return image_blob;
   }
 
