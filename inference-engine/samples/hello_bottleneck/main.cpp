@@ -13,7 +13,8 @@ using namespace InferenceEngine;
 
 int main(int argc, char *argv[]) {
   if (argc < 4) {
-    std::cout << "Usage : ./hello_bottleneck <model_path> <device> <nireq>"
+    std::cout << "Usage : ./hello_bottleneck <model_path> <device> <nireq> "
+                 "<optional: timeout (secs)>"
               << std::endl;
     return EXIT_FAILURE;
   }
